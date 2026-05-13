@@ -10,6 +10,28 @@ import { SocksProxyAgent } from 'socks-proxy-agent';
 import { getTLSSidecar } from './tls-sidecar.js';
 
 /**
+ * 从插件中解析当前节点的代理 URL。
+ * 检查 config 中是否由插件注入了 ipNodeProxy.getProxyUrl 方法。
+ *
+ * @param {Object} config - 已合并节点配置的请求配置
+ * @param {string} providerType - 提供商类型
+ * @returns {string|null} 绑定的代理 URL
+ */
+export function getNodeProxyUrlFromBinding(config, providerType) {
+    if (typeof config?.ipNodeProxy?.getProxyUrl === 'function') {
+        try {
+            return config.ipNodeProxy.getProxyUrl(providerType, config.uuid);
+        } catch (error) {
+            const nodeName = config?.customName || config?.uuid || 'unknown';
+            logger.error(`[Proxy] Error calling ipNodeProxy.getProxyUrl for ${providerType}/${nodeName}:`, error.message);
+        }
+    }
+
+    return null;
+}
+
+
+/**
  * 解析代理URL并返回相应的代理配置
  * @param {string} proxyUrl - 代理URL，如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080
  * @returns {Object|null} 代理配置对象，包含 httpAgent 和 httpsAgent
@@ -60,6 +82,10 @@ export function parseProxyUrl(proxyUrl) {
  * @returns {boolean} 是否启用代理
  */
 export function isProxyEnabledForProvider(config, providerType) {
+    if (getNodeProxyUrlFromBinding(config, providerType)) {
+        return true;
+    }
+
     if (!config || !config.PROXY_URL || !config.PROXY_ENABLED_PROVIDERS) {
         return false;
     }
@@ -89,10 +115,16 @@ export function getProxyConfigForProvider(config, providerType) {
         return null;
     }
 
-    const proxyConfig = parseProxyUrl(config.PROXY_URL);
+    const boundProxyUrl = getNodeProxyUrlFromBinding(config, providerType);
+    const proxyUrl = boundProxyUrl || config.PROXY_URL;
+    const proxyConfig = parseProxyUrl(proxyUrl);
     if (proxyConfig) {
-        logger.info(`[Proxy] Using ${proxyConfig.proxyType} proxy for ${providerType}: ${config.PROXY_URL}`);
+        const nodeName = config?.customName || config?.uuid;
+        const nodeDisplay = nodeName ? `${providerType}/${nodeName}` : providerType;
+        const source = boundProxyUrl ? `${nodeDisplay} (IP binding ${config.ipNodeProxy?.clientIp || 'unknown'})` : nodeDisplay;
+        logger.info(`[Proxy] Using ${proxyConfig.proxyType} proxy for ${source}: ${proxyUrl}`);
     }
+
     return proxyConfig;
 }
 
@@ -124,6 +156,10 @@ export function configureAxiosProxy(axiosConfig, config, providerType) {
  * @returns {boolean} 是否启用 TLS Sidecar
  */
 export function isTLSSidecarEnabledForProvider(config, providerType) {
+    // if (getNodeProxyUrlFromBinding(config, providerType)) {
+    //     return true;
+    // }
+
     if (!config || !config.TLS_SIDECAR_ENABLED || !config.TLS_SIDECAR_ENABLED_PROVIDERS) {
         return false;
     }
@@ -153,7 +189,9 @@ export function isTLSSidecarEnabledForProvider(config, providerType) {
 export function configureTLSSidecar(axiosConfig, config, providerType, defaultBaseUrl = null) {
     const sidecar = getTLSSidecar();
     if (sidecar.isReady() && isTLSSidecarEnabledForProvider(config, providerType)) {
-        const proxyUrl = config.TLS_SIDECAR_PROXY_URL || null;
+        // 优先使用 IP 绑定的代理，其次使用 Sidecar 专用的代理，最后使用全局代理
+        const boundProxyUrl = getNodeProxyUrlFromBinding(config, providerType);
+        const proxyUrl = boundProxyUrl || config.TLS_SIDECAR_PROXY_URL || config.PROXY_URL || null;
         
         // 处理相对路径
         if (axiosConfig.url && !axiosConfig.url.startsWith('http')) {
@@ -164,7 +202,15 @@ export function configureTLSSidecar(axiosConfig, config, providerType, defaultBa
             }
         }
         
+        const nodeName = config?.customName || config?.uuid;
+        const nodeDisplay = nodeName ? `${providerType}/${nodeName}` : providerType;
+        const source = boundProxyUrl ? `${nodeDisplay} (IP binding ${config.ipNodeProxy?.clientIp || 'unknown'})` : nodeDisplay;
+        logger.info(`[TLS Sidecar] Using sidecar for ${source}${proxyUrl ? ` (proxy: ${proxyUrl})` : ''}`);
+        
         sidecar.wrapAxiosConfig(axiosConfig, proxyUrl);
+    }else{
+        // 未启用 TLS Sidecar，直接使用全局代理
+        configureAxiosProxy(axiosConfig, config, providerType);
     }
     return axiosConfig;
 }

@@ -22,7 +22,7 @@ export { broadcastEvent, initializeUIManagement, handleUploadOAuthCredentials, u
 
 /**
  * Serve static files for the UI
- * @param {string} path - The request path
+ * @param {string} pathParam - The request path
  * @param {http.ServerResponse} res - The HTTP response object
  */
 export async function serveStaticFiles(pathParam, res) {
@@ -36,6 +36,8 @@ export async function serveStaticFiles(pathParam, res) {
             '.js': 'application/javascript',
             '.png': 'image/png',
             '.jpg': 'image/jpeg',
+            '.svg': 'image/svg+xml',
+            '.json': 'application/json',
             '.ico': 'image/x-icon'
         }[ext] || 'text/plain';
 
@@ -406,6 +408,21 @@ export async function handleUIApiRequests(method, pathParam, req, res, currentCo
     // Get plugins list
     if (method === 'GET' && pathParam === '/api/plugins') {
         return await pluginApi.handleGetPlugins(req, res);
+    }
+
+    // Get market plugins
+    if (method === 'GET' && pathParam === '/api/plugins/market') {
+        return await pluginApi.handleGetMarketPlugins(req, res);
+    }
+
+    // Install plugin
+    if (method === 'POST' && pathParam === '/api/plugins/install') {
+        return await pluginApi.handleInstallPlugin(req, res);
+    }
+
+    // Upload plugin
+    if (method === 'POST' && pathParam === '/api/plugins/upload') {
+        return await pluginApi.handleUploadPlugin(req, res);
     }
 
     // Toggle plugin status
