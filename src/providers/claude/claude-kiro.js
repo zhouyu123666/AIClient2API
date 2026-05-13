@@ -1128,6 +1128,8 @@ async saveCredentialsToFile(filePath, newData) {
         processedMessages.push(...mergedMessages);
 
         const codewhispererModel = MODEL_MAPPING[model] || model;
+        const omitModelId = this.config?.KIRO_OMIT_MODEL_ID === true;
+        const modelIdField = omitModelId ? {} : { modelId: codewhispererModel };
         const toolNameMaps = buildKiroToolNameMaps(tools);
         
         // 动态压缩 tools（保留全部工具，但过滤掉 web_search/websearch）
@@ -1251,7 +1253,7 @@ async saveCredentialsToFile(filePath, newData) {
                 history.push({
                     userInputMessage: {
                         content: `${systemPrompt}\n\n${firstUserContent}`,
-                        modelId: codewhispererModel,
+                        ...modelIdField,
                         origin: KIRO_CONSTANTS.ORIGIN_AI_EDITOR,
                     }
                 });
@@ -1262,7 +1264,7 @@ async saveCredentialsToFile(filePath, newData) {
                 history.push({
                     userInputMessage: {
                         content: systemPrompt,
-                        modelId: codewhispererModel,
+                        ...modelIdField,
                         origin: KIRO_CONSTANTS.ORIGIN_AI_EDITOR,
                     }
                 });
@@ -1281,7 +1283,7 @@ async saveCredentialsToFile(filePath, newData) {
             if (message.role === 'user') {
                 let userInputMessage = {
                     content: '',
-                    modelId: codewhispererModel,
+                    ...modelIdField,
                     origin: KIRO_CONSTANTS.ORIGIN_AI_EDITOR
                 };
                 let imageCount = 0;
@@ -1509,7 +1511,7 @@ async saveCredentialsToFile(filePath, newData) {
         // 注意：API 不接受 null 值，空字段应该完全不包含
         const userInputMessage = {
             content: currentContent,
-            modelId: codewhispererModel,
+            ...modelIdField,
             origin: KIRO_CONSTANTS.ORIGIN_AI_EDITOR
         };
 
