@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0ea5e9" />
+  <title>IP 节点代理绑定</title>
+  <link rel="stylesheet" href="app/base.css" />
+  <link rel="stylesheet" href="app/mobile.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    body { background: var(--bg-secondary); min-height: 100vh; }
+    .navbar { position: sticky; top: 0; z-index: 100; background: var(--bg-primary); border-bottom: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }
+    .navbar-inner, .main { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+    .navbar-inner { height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon { width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff; box-shadow: var(--shadow-md); }
+    .brand-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+    .brand-sub { font-size: 12px; color: var(--text-secondary); }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+    .btn, .nav-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 0 14px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); cursor: pointer; font-size: 14px; font-weight: 600; transition: var(--transition); text-decoration: none; }
+    .btn.primary { background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff; border-color: transparent; }
+    .btn.danger { background: #ef4444; color: #fff; border-color: transparent; }
+    .btn.ghost { background: transparent; }
+    .btn.sm { min-height: 30px; padding: 0 10px; font-size: 12px; }
+    .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .btn[disabled] { opacity: .6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .main { padding: 30px 24px 48px; }
+    .panel { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); padding: 22px; margin-bottom: 20px; }
+    .panel h2 { font-size: 16px; margin: 0 0 6px; }
+    .panel p.copy { color: var(--text-secondary); font-size: 13px; margin: 0 0 14px; }
+    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .row > .grow { flex: 1; min-width: 240px; }
+    .input { width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-primary); font-size: 14px; font-family: inherit; }
+    .input:focus { border-color: #0ea5e9; outline: none; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.18); }
+    select.input { appearance: auto; }
+    label { font-size: 12px; color: var(--text-secondary); font-weight: 600; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .stat-card { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 14px 16px; }
+    .stat-card .label { font-size: 12px; color: var(--text-secondary); }
+    .stat-card .value { font-size: 24px; font-weight: 700; color: var(--text-primary); margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 12px 12px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+    th { color: var(--text-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    tr:last-child td { border-bottom: none; }
+    .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--bg-secondary); color: var(--text-secondary); }
+    .pill.ok { background: #dcfce7; color: #166534; }
+    .pill.warn { background: #fef3c7; color: #92400e; }
+    .pill.bad { background: #fee2e2; color: #991b1b; }
+    .pill.info { background: #dbeafe; color: #1e40af; }
+    .status { padding: 12px 14px; border-radius: var(--radius-md); margin-bottom: 14px; font-size: 13px; display: none; align-items: center; gap: 10px; }
+    .status.show { display: flex; }
+    .status.info { background: #dbeafe; color: #1e40af; }
+    .status.success { background: #dcfce7; color: #166534; }
+    .status.error { background: #fee2e2; color: #991b1b; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
+    .muted { color: var(--text-secondary); font-size: 12px; }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .empty { padding: 40px 20px; text-align: center; color: var(--text-secondary); font-size: 14px; }
+    .badge-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    @media (max-width: 720px) {
+      .navbar-inner, .main { padding: 0 12px; }
+      th, td { padding: 10px 8px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="navbar-inner">
+      <div class="brand">
+        <span class="brand-icon"><i class="fas fa-route"></i></span>
+        <div>
+          <div class="brand-title">IP 节点代理绑定</div>
+          <div class="brand-sub">为每个 Provider 账号单独绑定出站代理，避免共享 IP 被封</div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <a href="index.html" class="nav-btn"><i class="fas fa-arrow-left"></i><span>返回</span></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="status" class="status"></div>
+
+    <section class="panel">
+      <h2><i class="fas fa-key"></i> 访问凭证</h2>
+      <p class="copy">使用后台登录返回的 Bearer Token，或直接使用 <code>REQUIRED_API_KEY</code>。凭证会保存在本地浏览器。</p>
+      <div class="row">
+        <div class="grow">
+          <input id="credential" class="input" type="password" placeholder="粘贴 Bearer Token 或 API Key" autocomplete="off" />
+        </div>
+        <button id="btnConnect" class="btn primary"><i class="fas fa-plug"></i> 连接</button>
+        <button id="btnClear" class="btn ghost"><i class="fas fa-eraser"></i> 清除</button>
+        <span id="authBadge" class="pill">未连接</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2 style="margin:0"><i class="fas fa-chart-pie"></i> 概览</h2>
+        </div>
+        <div class="actions">
+          <button id="btnRefresh" class="btn"><i class="fas fa-rotate"></i> 刷新</button>
+          <button id="btnReinvalidate" class="btn"><i class="fas fa-power-off"></i> 重建 Adapter</button>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="label">绑定总数</div><div class="value" id="statTotal">0</div></div>
+        <div class="stat-card"><div class="label">已启用</div><div class="value" id="statEnabled">0</div></div>
+        <div class="stat-card"><div class="label">已覆盖节点数</div><div class="value" id="statCovered">0</div></div>
+        <div class="stat-card"><div class="label">提供商类型</div><div class="value" id="statProviderTypes">0</div></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2 style="margin:0"><i class="fas fa-circle-nodes"></i> 节点列表</h2>
+          <p class="copy" style="margin:6px 0 0">展示所有从 <code>provider_pools.json</code> 加载的账号，并显示其当前绑定。</p>
+        </div>
+        <div>
+          <span class="muted">点击 <i class="fas fa-plus"></i> 可快速为节点添加绑定</span>
+        </div>
+      </div>
+      <div id="nodesTableWrap"></div>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2 style="margin:0"><i class="fas fa-link"></i> 绑定规则</h2>
+          <p class="copy" style="margin:6px 0 0">每条规则将一个账号 (provider + uuid) 绑定到一个 HTTP/HTTPS/SOCKS5 出站代理。</p>
+        </div>
+        <div class="actions">
+          <button id="btnAddBinding" class="btn primary"><i class="fas fa-plus"></i> 新增绑定</button>
+        </div>
+      </div>
+      <div id="bindingsTableWrap"></div>
+    </section>
+
+    <section class="panel">
+      <h2><i class="fas fa-vial"></i> 代理连通性测试</h2>
+      <p class="copy">填入代理 URL（如 <code>socks5://127.0.0.1:1080</code>），用任意 HTTPS 目标做一次连通性测试。</p>
+      <div class="row">
+        <div class="grow">
+          <label>代理 URL</label>
+          <input id="probeProxy" class="input" placeholder="socks5://user:pass@host:port" />
+        </div>
+        <div style="flex: 1; min-width: 240px">
+          <label>目标 URL (可选)</label>
+          <input id="probeTarget" class="input" placeholder="https://www.google.com/generate_204" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="btnProbe" class="btn"><i class="fas fa-play"></i> 测试</button>
+        </div>
+      </div>
+      <div id="probeResult" style="margin-top: 12px"></div>
+    </section>
+  </main>
+
+  <!-- 绑定编辑器：使用 dialog 元素 -->
+  <dialog id="dialog" style="border:none;border-radius:14px;padding:0;max-width:520px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+    <form id="dialogForm" method="dialog" style="padding:24px;background:var(--bg-primary);color:var(--text-primary);border-radius:14px">
+      <h2 id="dialogTitle" style="margin:0 0 14px;font-size:18px">新增绑定</h2>
+      <input type="hidden" id="dlgId" />
+      <div style="display:grid;gap:12px">
+        <div>
+          <label>提供商类型</label>
+          <input id="dlgProvider" class="input" placeholder="如 claude-kiro-oauth" />
+        </div>
+        <div>
+          <label>账号 UUID</label>
+          <input id="dlgUuid" class="input" />
+        </div>
+        <div>
+          <label>账号备注 (customName，可选)</label>
+          <input id="dlgCustomName" class="input" />
+        </div>
+        <div>
+          <label>出站代理 URL</label>
+          <input id="dlgProxy" class="input" placeholder="socks5://127.0.0.1:1080" />
+        </div>
+        <div>
+          <label>允许的 Client IP (可选，逗号分隔，<code>*</code> 表示全部)</label>
+          <input id="dlgClientIps" class="input" placeholder="* 或 127.0.0.1,192.168.1.10" />
+          <div class="muted" style="margin-top:4px">该字段仅作为审计/参考使用，实际路由按账号 (uuid) 而非 IP 决策。</div>
+        </div>
+        <div>
+          <label>备注</label>
+          <input id="dlgNote" class="input" />
+        </div>
+        <div>
+          <label><input type="checkbox" id="dlgEnabled" checked /> 启用</label>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;gap:8px;margin-top:18px">
+        <button type="button" id="dlgCancel" class="btn ghost">取消</button>
+        <div class="actions">
+          <button type="button" id="dlgTest" class="btn"><i class="fas fa-vial"></i> 测试代理</button>
+          <button type="button" id="dlgSave" class="btn primary"><i class="fas fa-save"></i> 保存</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    const STORAGE_KEY = 'ipNodeProxy.credential';
+    const API_PREFIX = '/api/ip-node-proxy';
+    let state = { nodes: [], bindings: [], accessStats: {} };
+
+    const el = (id) => document.getElementById(id);
+
+    function status(msg, type = 'info') {
+      const icon = type === 'error' ? 'fa-triangle-exclamation' : type === 'success' ? 'fa-circle-check' : 'fa-circle-info';
+      el('status').className = `status ${type} show`;
+      el('status').innerHTML = `<i class="fas ${icon}"></i><span>${msg}</span>`;
+      if (type !== 'error') setTimeout(() => el('status').classList.remove('show'), 4000);
+    }
+
+    function setBadge(text, ok) {
+      const b = el('authBadge');
+      b.className = ok ? 'pill ok' : 'pill';
+      b.textContent = text;
+    }
+
+    function credential() {
+      return el('credential').value.trim();
+    }
+
+    function saveCredential() {
+      const c = credential();
+      if (c) localStorage.setItem(STORAGE_KEY, c);
+    }
+
+    function restoreCredential() {
+      const v = localStorage.getItem(STORAGE_KEY);
+      if (v) el('credential').value = v;
+    }
+
+    function authHeaders() {
+      const c = credential();
+      if (!c) throw new Error('请先填写访问凭证');
+      return { Authorization: `Bearer ${c}`, 'x-api-key': c };
+    }
+
+    async function api(method, path, body) {
+      const init = { method, headers: { ...authHeaders() } };
+      if (body !== undefined) {
+        init.headers['Content-Type'] = 'application/json';
+        init.body = JSON.stringify(body);
+      }
+      const resp = await fetch(API_PREFIX + path, init);
+      const text = await resp.text();
+      let payload = null;
+      try { payload = text ? JSON.parse(text) : null; } catch { throw new Error(`返回非 JSON 内容: ${text}`); }
+      if (!resp.ok) {
+        if (payload?.error?.code === 'PLUGIN_DISABLED') throw new Error('插件未启用：请先在插件管理中启用 ip-node-proxy');
+        throw new Error(payload?.error?.message || payload?.message || `请求失败 (${resp.status})`);
+      }
+      return payload;
+    }
+
+    function fmtTime(ts) {
+      if (!ts) return '-';
+      try { return new Date(ts).toLocaleString('zh-CN'); } catch { return String(ts); }
+    }
+
+    function shortUuid(uuid) {
+      if (!uuid || uuid.length < 12) return uuid || '';
+      return `${uuid.slice(0, 8)}…${uuid.slice(-4)}`;
+    }
+
+    function findBinding(providerType, uuid) {
+      return state.bindings.find((b) => b.providerType === providerType && b.uuid === uuid) || null;
+    }
+
+    function renderStats() {
+      const total = state.bindings.length;
+      const enabled = state.bindings.filter((b) => b.enabled).length;
+      const providerTypes = new Set(state.bindings.map((b) => b.providerType)).size;
+      const covered = new Set(state.bindings.map((b) => `${b.providerType}::${b.uuid}`)).size;
+      el('statTotal').textContent = total;
+      el('statEnabled').textContent = enabled;
+      el('statProviderTypes').textContent = providerTypes;
+      el('statCovered').textContent = covered;
+    }
+
+    function renderNodes() {
+      const wrap = el('nodesTableWrap');
+      if (!state.nodes.length) {
+        wrap.innerHTML = '<div class="empty">未发现任何节点。请确认 provider_pools.json 已加载，并刷新本页面。</div>';
+        return;
+      }
+      const rows = state.nodes.map((n) => {
+        const binding = findBinding(n.providerType, n.uuid);
+        const healthPill = n.isDisabled
+          ? '<span class="pill warn">已禁用</span>'
+          : (n.isHealthy ? '<span class="pill ok">健康</span>' : '<span class="pill bad">异常</span>');
+        const proxyCell = binding
+          ? `<div class="mono">${escapeHtml(binding.proxyUrl)}</div><div class="muted">${binding.enabled ? '已启用' : '已禁用'}</div>`
+          : '<span class="muted">未绑定</span>';
+        const action = binding
+          ? `<button class="btn sm" data-action="edit" data-id="${binding.id}"><i class="fas fa-pen"></i> 编辑</button>`
+          : `<button class="btn sm primary" data-action="add" data-provider="${escapeAttr(n.providerType)}" data-uuid="${escapeAttr(n.uuid || '')}" data-cn="${escapeAttr(n.customName || '')}"><i class="fas fa-plus"></i> 绑定</button>`;
+        return `<tr>
+          <td><div style="font-weight:600">${escapeHtml(n.providerType)}</div><div class="muted mono">${shortUuid(n.uuid)}</div></td>
+          <td>${escapeHtml(n.customName || '-')}</td>
+          <td>${healthPill}</td>
+          <td>${proxyCell}</td>
+          <td class="actions">${action}</td>
+        </tr>`;
+      }).join('');
+      wrap.innerHTML = `<div style="overflow-x:auto"><table>
+        <thead><tr><th>账号</th><th>备注</th><th>状态</th><th>绑定代理</th><th>操作</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+    }
+
+    function renderBindings() {
+      const wrap = el('bindingsTableWrap');
+      if (!state.bindings.length) {
+        wrap.innerHTML = '<div class="empty">暂无绑定规则。点击右上角“新增绑定”创建第一条。</div>';
+        return;
+      }
+      const rows = state.bindings.map((b) => {
+        const pill = b.enabled ? '<span class="pill ok">启用</span>' : '<span class="pill">停用</span>';
+        const ipsArr = Array.isArray(b.clientIps) && b.clientIps.length ? b.clientIps : ['*'];
+        const ipsHtml = ipsArr.map((s) => `<span class="pill info">${escapeHtml(s)}</span>`).join(' ');
+        return `<tr>
+          <td><div style="font-weight:600">${escapeHtml(b.providerType)}</div><div class="muted mono">${shortUuid(b.uuid)}</div></td>
+          <td>${escapeHtml(b.customName || '-')}</td>
+          <td><div class="mono">${escapeHtml(b.proxyUrl)}</div></td>
+          <td><div class="badge-list">${ipsHtml}</div></td>
+          <td>${pill}</td>
+          <td class="muted" style="font-size:11px">${fmtTime(b.updatedAt)}</td>
+          <td class="actions">
+            <button class="btn sm" data-action="edit" data-id="${b.id}"><i class="fas fa-pen"></i></button>
+            <button class="btn sm" data-action="toggle" data-id="${b.id}"><i class="fas fa-power-off"></i></button>
+            <button class="btn sm" data-action="test" data-id="${b.id}"><i class="fas fa-vial"></i></button>
+            <button class="btn sm danger" data-action="delete" data-id="${b.id}"><i class="fas fa-trash"></i></button>
+          </td>
+        </tr>`;
+      }).join('');
+      wrap.innerHTML = `<div style="overflow-x:auto"><table>
+        <thead><tr><th>账号</th><th>备注</th><th>代理</th><th>允许 IP</th><th>状态</th><th>更新于</th><th>操作</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function escapeAttr(s) {
+      return escapeHtml(s).replace(/`/g, '&#96;');
+    }
+
+    async function refresh() {
+      try {
+        const [overview, nodesResp] = await Promise.all([
+          api('GET', ''),
+          api('GET', '/nodes')
+        ]);
+        state.bindings = overview?.data?.bindings || [];
+        state.accessStats = overview?.data?.accessStats || {};
+        state.nodes = nodesResp?.data?.nodes || [];
+        renderStats();
+        renderNodes();
+        renderBindings();
+        setBadge(`已连接（${state.bindings.length} 条绑定）`, true);
+      } catch (err) {
+        setBadge('未连接', false);
+        status(err.message, 'error');
+      }
+    }
+
+    function openDialog(binding) {
+      el('dialogTitle').textContent = binding?.id ? '编辑绑定' : '新增绑定';
+      el('dlgId').value = binding?.id || '';
+      el('dlgProvider').value = binding?.providerType || '';
+      el('dlgUuid').value = binding?.uuid || '';
+      el('dlgCustomName').value = binding?.customName || '';
+      el('dlgProxy').value = binding?.proxyUrl || '';
+      el('dlgClientIps').value = Array.isArray(binding?.clientIps) ? binding.clientIps.join(',') : '*';
+      el('dlgNote').value = binding?.note || '';
+      el('dlgEnabled').checked = binding ? binding.enabled !== false : true;
+      el('dialog').showModal();
+    }
+
+    function readDialog() {
+      const clientIpsRaw = el('dlgClientIps').value.trim();
+      const clientIps = clientIpsRaw ? clientIpsRaw.split(',').map((s) => s.trim()).filter(Boolean) : ['*'];
+      return {
+        providerType: el('dlgProvider').value.trim(),
+        uuid: el('dlgUuid').value.trim(),
+        customName: el('dlgCustomName').value.trim(),
+        proxyUrl: el('dlgProxy').value.trim(),
+        clientIps,
+        note: el('dlgNote').value.trim(),
+        enabled: el('dlgEnabled').checked
+      };
+    }
+
+    async function saveDialog() {
+      const id = el('dlgId').value;
+      const data = readDialog();
+      try {
+        if (id) {
+          await api('PUT', `/bindings/${encodeURIComponent(id)}`, data);
+          status('绑定已更新', 'success');
+        } else {
+          await api('POST', '/bindings', data);
+          status('绑定已创建', 'success');
+        }
+        el('dialog').close();
+        await refresh();
+      } catch (err) {
+        status(err.message, 'error');
+      }
+    }
+
+    async function dialogTest() {
+      const data = readDialog();
+      if (!data.proxyUrl) { status('请填写代理 URL 后再测试', 'error'); return; }
+      try {
+        const r = await api('POST', '/test', { proxyUrl: data.proxyUrl });
+        const d = r?.data || {};
+        const msg = d.ok ? `代理可达（${d.statusCode}，${d.elapsedMs}ms）` : `代理不可达：${d.message}`;
+        status(msg, d.ok ? 'success' : 'error');
+      } catch (err) {
+        status(err.message, 'error');
+      }
+    }
+
+    async function handleTableClick(ev) {
+      const btn = ev.target.closest('button');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+      try {
+        if (action === 'edit') {
+          const binding = state.bindings.find((b) => b.id === id);
+          if (binding) openDialog(binding);
+          return;
+        }
+        if (action === 'add') {
+          openDialog({
+            providerType: btn.dataset.provider || '',
+            uuid: btn.dataset.uuid || '',
+            customName: btn.dataset.cn || '',
+            enabled: true,
+            clientIps: ['*']
+          });
+          return;
+        }
+        if (action === 'toggle') {
+          await api('POST', `/bindings/${encodeURIComponent(id)}/toggle`);
+          await refresh();
+          return;
+        }
+        if (action === 'delete') {
+          if (!confirm('确定要删除该绑定吗？删除后该账号将回退到全局代理或直连。')) return;
+          await api('DELETE', `/bindings/${encodeURIComponent(id)}`);
+          await refresh();
+          status('绑定已删除', 'success');
+          return;
+        }
+        if (action === 'test') {
+          const binding = state.bindings.find((b) => b.id === id);
+          if (!binding) return;
+          status('测试中…');
+          const r = await api('POST', '/test', { proxyUrl: binding.proxyUrl });
+          const d = r?.data || {};
+          status(d.ok ? `代理可达（${d.statusCode}，${d.elapsedMs}ms）` : `代理不可达：${d.message}`, d.ok ? 'success' : 'error');
+          return;
+        }
+      } catch (err) {
+        status(err.message, 'error');
+      }
+    }
+
+    function bind() {
+      el('btnConnect').addEventListener('click', async () => {
+        saveCredential();
+        await refresh();
+      });
+      el('btnClear').addEventListener('click', () => {
+        localStorage.removeItem(STORAGE_KEY);
+        el('credential').value = '';
+        setBadge('未连接', false);
+      });
+      el('btnRefresh').addEventListener('click', refresh);
+      el('btnReinvalidate').addEventListener('click', async () => {
+        try {
+          const r = await api('POST', '/reinvalidate');
+          status(r.message || '已重建 adapter 缓存', 'success');
+        } catch (err) {
+          status(err.message, 'error');
+        }
+      });
+      el('btnAddBinding').addEventListener('click', () => openDialog(null));
+      el('btnProbe').addEventListener('click', async () => {
+        const proxyUrl = el('probeProxy').value.trim();
+        const target = el('probeTarget').value.trim();
+        if (!proxyUrl) { status('请填写代理 URL', 'error'); return; }
+        el('probeResult').innerHTML = '<span class="muted"><i class="fas fa-spinner fa-spin"></i> 测试中…</span>';
+        try {
+          const r = await api('POST', '/test', { proxyUrl, target: target || undefined });
+          const d = r?.data || {};
+          const cls = d.ok ? 'ok' : 'bad';
+          el('probeResult').innerHTML = `<div class="status ${d.ok ? 'success' : 'error'} show">
+            <i class="fas ${d.ok ? 'fa-circle-check' : 'fa-triangle-exclamation'}"></i>
+            <div>
+              <div><strong>${d.ok ? '代理可达' : '代理不可达'}</strong> · <span class="pill ${cls}">${escapeHtml(d.proxyType || 'unknown')}</span></div>
+              <div class="muted">状态码 ${d.statusCode ?? '-'}，耗时 ${d.elapsedMs ?? '-'}ms，目标 ${escapeHtml(d.target || '-')}</div>
+              <div class="muted">${escapeHtml(d.message || '')}</div>
+            </div>
+          </div>`;
+        } catch (err) {
+          el('probeResult').innerHTML = `<div class="status error show"><i class="fas fa-triangle-exclamation"></i> ${escapeHtml(err.message)}</div>`;
+        }
+      });
+
+      el('dlgCancel').addEventListener('click', () => el('dialog').close());
+      el('dlgSave').addEventListener('click', saveDialog);
+      el('dlgTest').addEventListener('click', dialogTest);
+
+      document.addEventListener('click', handleTableClick);
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      restoreCredential();
+      bind();
+      if (credential()) {
+        await refresh();
+      }
+    });
+  </script>
+</body>
+</html>

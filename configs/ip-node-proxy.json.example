@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "bindings": {
+    "00000000-1111-2222-3333-444444444444": {
+      "id": "00000000-1111-2222-3333-444444444444",
+      "providerType": "claude-kiro-oauth",
+      "uuid": "355db9fe-1295-45bd-8b39-2f6f10a9105c",
+      "customName": "github",
+      "proxyUrl": "socks5://127.0.0.1:1080",
+      "clientIps": ["*"],
+      "enabled": true,
+      "note": "github account routes through dedicated socks5 proxy",
+      "createdAt": 1726000000000,
+      "updatedAt": 1726000000000
+    },
+    "55555555-6666-7777-8888-999999999999": {
+      "id": "55555555-6666-7777-8888-999999999999",
+      "providerType": "claude-kiro-oauth",
+      "uuid": "b6916b75-d6ab-45d9-9e5d-d53970d1f1ec",
+      "customName": "google",
+      "proxyUrl": "http://127.0.0.1:7891",
+      "clientIps": ["*"],
+      "enabled": true,
+      "note": "google account routes through another upstream",
+      "createdAt": 1726000000000,
+      "updatedAt": 1726000000000
+    }
+  },
+  "accessStats": {}
+}

@@ -20,7 +20,9 @@ import { getTLSSidecar } from './tls-sidecar.js';
 export function getNodeProxyUrlFromBinding(config, providerType) {
     if (typeof config?.ipNodeProxy?.getProxyUrl === 'function') {
         try {
-            return config.ipNodeProxy.getProxyUrl(providerType, config.uuid);
+            // Pass clientIp as 3rd arg so plugins can apply per-client-IP rules
+            // (older plugins that ignore extra args remain compatible).
+            return config.ipNodeProxy.getProxyUrl(providerType, config.uuid, config.ipNodeProxy.clientIp || null);
         } catch (error) {
             const nodeName = config?.customName || config?.uuid || 'unknown';
             logger.error(`[Proxy] Error calling ipNodeProxy.getProxyUrl for ${providerType}/${nodeName}:`, error.message);
